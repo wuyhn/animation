@@ -1,9 +1,164 @@
+//package com.example.animation;
+//
+//import android.animation.Animator;
+//import android.animation.AnimatorListenerAdapter;
+//import android.animation.ValueAnimator;
+//import android.os.Bundle;
+//import android.view.View;
+//import android.view.ViewGroup;
+//import android.widget.Button;
+//import android.widget.LinearLayout;
+//import android.widget.TextView;
+//import androidx.appcompat.app.AppCompatActivity;
+//import androidx.core.content.ContextCompat;
+//
+//public class MainActivity extends AppCompatActivity {
+//
+//    private LinearLayout viewsContainer;
+//    private Button btnBadAnimation;
+//    private Button btnGoodAnimation;
+//    private TextView explanationText;
+//
+//    private ValueAnimator badAnimator;
+//
+//    private int originalWidth = 0;
+//    private int originalHeight = 0;
+//    private int originalMargin = 8; // Lưu lại margin gốc
+//
+//    @Override
+//    protected void onCreate(Bundle savedInstanceState) {
+//        super.onCreate(savedInstanceState);
+//        setContentView(R.layout.activity_main);
+//
+//        viewsContainer = findViewById(R.id.views_container);
+//        btnBadAnimation = findViewById(R.id.btn_bad_animation);
+//        btnGoodAnimation = findViewById(R.id.btn_good_animation);
+//        explanationText = findViewById(R.id.explanation_text);
+//
+//        int size = (int) (getResources().getDisplayMetrics().density * 36);
+//        // *** 1. TĂNG TẢI LÊN MỨC CỰC ĐOAN (200 VIEWS) ***
+//        for (int i = 1; i <= 200; i++) {
+//            TextView tv = new TextView(this);
+//            tv.setText(String.valueOf(i));
+//            tv.setTextSize(16f);
+//            tv.setTextColor(ContextCompat.getColor(this, android.R.color.white));
+//            tv.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_light));
+//            tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+//
+//            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
+//            lp.setMargins(originalMargin, originalMargin, originalMargin, originalMargin);
+//            tv.setLayoutParams(lp);
+//
+//            viewsContainer.addView(tv);
+//        }
+//
+//        viewsContainer.post(() -> {
+//            View firstChild = viewsContainer.getChildAt(0);
+//            if (firstChild != null) {
+//                originalWidth = firstChild.getWidth();
+//                originalHeight = firstChild.getHeight();
+//            }
+//        });
+//
+//        btnBadAnimation.setOnClickListener(v -> runBadAnimation());
+//        btnGoodAnimation.setOnClickListener(v -> runGoodAnimation());
+//    }
+//
+//    private void runBadAnimation() {
+//        explanationText.setText(
+//                "🚫 CÁCH CHƯA TỐI ƯU (ĐẢM BẢO > 16ms) 🚫\n" +
+//                        "Thêm 10ms delay và thay đổi Margin + Width/Height cho 200 View.\n" +
+//                        "👉 Thời gian frame = 10ms (delay) + Thời gian tính toán layout.\n" +
+//                        "Kết quả: Cột xanh dương luôn vượt ngưỡng một cách rõ rệt."
+//        );
+//
+//        resetViewState();
+//
+//        if (originalWidth == 0) return;
+//
+//        badAnimator = ValueAnimator.ofInt(0, 100);
+//        badAnimator.setDuration(1000);
+//        badAnimator.addUpdateListener(animator -> {
+//            // *** "ĐÓNG BĂNG" UI THREAD ĐỂ ĐẢM BẢO VƯỢT NGƯỠNG ***
+//            // (LƯU Ý: KHÔNG BAO GIỜ DÙNG TRONG CODE THỰC TẾ)
+//            try {
+//                Thread.sleep(10);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//
+//            int offset = (int) animator.getAnimatedValue();
+//
+//            for (int i = 0; i < viewsContainer.getChildCount(); i++) {
+//                View view = viewsContainer.getChildAt(i);
+//                LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) view.getLayoutParams();
+//                lp.width = originalWidth + offset;
+//                lp.height = originalHeight + offset;
+//                lp.setMargins(originalMargin + offset / 2, originalMargin + offset / 2, originalMargin + offset / 2, originalMargin + offset / 2);
+//                view.setLayoutParams(lp);
+//            }
+//
+//            viewsContainer.requestLayout();
+//        });
+//
+//        badAnimator.addListener(new AnimatorListenerAdapter() {
+//            @Override
+//            public void onAnimationEnd(Animator animation) {
+//                resetViewState();
+//            }
+//        });
+//        badAnimator.start();
+//    }
+//
+//    private void runGoodAnimation() {
+//        explanationText.setText(
+//                "✅ CÁCH TỐI ƯU HOÀN HẢO ✅\n" +
+//                        "Animate CẢ CONTAINER bằng scale. Đặt pivotY = 0 để chuyển động giống hệt.\n" +
+//                        "👉 Hiệu ứng hình ảnh giống hệt, nhưng hiệu năng vượt trội vì do GPU xử lý.\n" +
+//                        "Kết quả: Animation mượt mà, biểu đồ phẳng."
+//        );
+//
+//        resetViewState();
+//
+//        viewsContainer.setPivotY(0f);
+//
+//        viewsContainer.animate()
+//                .scaleX(2.0f)
+//                .scaleY(2.0f)
+//                .setDuration(1000)
+//                .withLayer()
+//                .withEndAction(() -> resetViewState())
+//                .start();
+//    }
+//
+//    private void resetViewState() {
+//        if (badAnimator != null) {
+//            badAnimator.cancel();
+//        }
+//
+//        viewsContainer.animate().cancel();
+//        viewsContainer.setScaleX(1.0f);
+//        viewsContainer.setScaleY(1.0f);
+//        viewsContainer.setPivotX(viewsContainer.getWidth() / 2f);
+//        viewsContainer.setPivotY(viewsContainer.getHeight() / 2f);
+//
+//        if (viewsContainer.getChildCount() > 0 && viewsContainer.getChildAt(0).getWidth() != originalWidth) {
+//            for (int i = 0; i < viewsContainer.getChildCount(); i++) {
+//                View view = viewsContainer.getChildAt(i);
+//                LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) view.getLayoutParams();
+//                layoutParams.width = originalWidth;
+//                layoutParams.height = originalHeight;
+//                // *** SỬA LỖI: RESET LẠI MARGIN ***
+//                layoutParams.setMargins(originalMargin, originalMargin, originalMargin, originalMargin);
+//                view.setLayoutParams(layoutParams);
+//            }
+//        }
+//    }
+//}
 package com.example.animation;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -15,140 +170,126 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity {
 
     private LinearLayout viewsContainer;
-    private Button btnBadAnimation;
-    private Button btnGoodAnimation;
+    private Button btnBadAnimation, btnGoodAnimation;
     private TextView explanationText;
-
-    private ValueAnimator badAnimator;
-
-    private int originalWidth = 0;
-    private int originalHeight = 0;
+    private Handler handler = new Handler();
+    private Runnable[] barRunnables; // "bad"
+    private static final int BAR_COUNT = 140;
+    private static final int BAR_WIDTH_DP = 18;
+    private static final int BAR_HEIGHT_MIN_DP = 52; // min height bar
+    private static final int BAR_HEIGHT_MAX_DP = 180; // max height bar
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        viewsContainer = findViewById(R.id.views_container);
-        btnBadAnimation = findViewById(R.id.btn_bad_animation);
+        viewsContainer   = findViewById(R.id.views_container);
+        btnBadAnimation  = findViewById(R.id.btn_bad_animation);
         btnGoodAnimation = findViewById(R.id.btn_good_animation);
-        explanationText = findViewById(R.id.explanation_text);
+        explanationText  = findViewById(R.id.explanation_text);
 
-        int size = (int) (getResources().getDisplayMetrics().density * 36);
-        for (int i = 1; i <= 40; i++) {
-            TextView tv = new TextView(this);
-            tv.setText(String.valueOf(i));
-            tv.setTextSize(16f);
-            tv.setTextColor(ContextCompat.getColor(this, android.R.color.white));
-            tv.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_light));
-            tv.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
-
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(size, size);
-            lp.setMargins(8, 8, 8, 8);
-            tv.setLayoutParams(lp);
-
-            viewsContainer.addView(tv);
+        // Tạo nhiều "bar" dựng thẳng đứng
+        int barWidthPx     = (int) (getResources().getDisplayMetrics().density * BAR_WIDTH_DP);
+        int barHeightMinPx = (int) (getResources().getDisplayMetrics().density * BAR_HEIGHT_MIN_DP);
+        for (int i = 0; i < BAR_COUNT; i++) {
+            View bar = new View(this);
+            bar.setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_light));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(barWidthPx, barHeightMinPx);
+            lp.setMargins(7, 0, 7, 0);
+            bar.setLayoutParams(lp);
+            bar.setScaleY(1f);
+            viewsContainer.addView(bar);
         }
-
-        viewsContainer.post(() -> {
-            View firstChild = viewsContainer.getChildAt(0);
-            if (firstChild != null) {
-                originalWidth = firstChild.getWidth();
-                originalHeight = firstChild.getHeight();
-            }
-        });
 
         btnBadAnimation.setOnClickListener(v -> runBadAnimation());
         btnGoodAnimation.setOnClickListener(v -> runGoodAnimation());
     }
 
+    // Chưa tối ưu: đổi layoutParams.height từng bar
     private void runBadAnimation() {
         explanationText.setText(
-                "🚫 CÁCH CHƯA TỐI ƯU 🚫\n" +
-                "Thay đổi LayoutParams cho nhiều View cùng lúc.\n" +
-                "👉 UI Thread phải requestLayout + measure lại TẤT CẢ View mỗi frame.\n" +
-                "Kết quả: Animation bị giật/lag rõ rệt."
+                "🚫 Animation CHƯA tối ưu: mỗi cột đổi chiều cao (layoutParams.height) liên tục.\n"
+                        + "→ Hệ thống phải layout lại nên drop frame khi đủ nhiều BAR."
         );
-
         resetViewState();
 
-        if (originalWidth == 0) return;
+        int barHeightMinPx = (int) (getResources().getDisplayMetrics().density * BAR_HEIGHT_MIN_DP);
+        int barHeightMaxPx = (int) (getResources().getDisplayMetrics().density * BAR_HEIGHT_MAX_DP);
+        int n = viewsContainer.getChildCount();
+        barRunnables = new Runnable[n];
 
-        badAnimator = ValueAnimator.ofInt(originalWidth, originalWidth * 2);
-        badAnimator.setDuration(1000);
-        badAnimator.addUpdateListener(animator -> {
-            int animatedValue = (int) animator.getAnimatedValue();
-            for (int i = 0; i < viewsContainer.getChildCount(); i++) {
-                View view = viewsContainer.getChildAt(i);
-                ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-                layoutParams.width = animatedValue;
-                layoutParams.height = animatedValue;
-                view.setLayoutParams(layoutParams);
-            }
-        });
-        badAnimator.addListener(new AnimatorListenerAdapter() {
+        for (int i = 0; i < n; i++) {
+            View bar = viewsContainer.getChildAt(i);
+            barRunnables[i] = createBadBarAnimator(bar, barHeightMinPx, barHeightMaxPx, i);
+            bar.postDelayed(barRunnables[i], i * 15); // lệch nhịp sóng
+        }
+    }
+    private Runnable createBadBarAnimator(final View bar, final int minHeight, final int maxHeight, int index) {
+        final int[] heightVal = {minHeight};
+        final boolean[] increasing = {true};
+        return new Runnable() {
             @Override
-            public void onAnimationEnd(Animator animation) {
-                resetViewState();
+            public void run() {
+                ViewGroup.LayoutParams lp = bar.getLayoutParams();
+                lp.height = heightVal[0];
+                bar.setLayoutParams(lp);
+
+                if (increasing[0]) heightVal[0] += 6;
+                else heightVal[0] -= 6;
+                if (heightVal[0] >= maxHeight) increasing[0] = false;
+                if (heightVal[0] <= minHeight) increasing[0] = true;
+
+                bar.postDelayed(this, 16);
             }
-        });
-        badAnimator.start();
+        };
     }
 
+    // Tối ưu: scaleY property animation
     private void runGoodAnimation() {
         explanationText.setText(
-                "✅ CÁCH ĐÃ TỐI ƯU ✅\n" +
-                "Dùng ViewPropertyAnimator.scaleX/scaleY, nhưng thay đổi Pivot Point để có hiệu ứng hình ảnh giống hệt.\n" +
-                "👉 Vẫn do GPU xử lý, KHÔNG requestLayout/measure. Hiệu năng vượt trội.\n" +
-                "Kết quả: Animation mượt mà, dù hiệu ứng hình ảnh giống hệt cách chưa tối ưu."
+                "✅ Animation TỐI ƯU: mỗi cột chỉ scaleY với property animator.\n"
+                        + "→ Hoạt ảnh cực kỳ mượt, tuyệt đối không drop frame."
         );
-
         resetViewState();
 
-        int childCount = viewsContainer.getChildCount();
-        for (int i = 0; i < childCount; i++) {
-            View view = viewsContainer.getChildAt(i);
-
-            // Thay đổi điểm neo (pivot) về góc trên-trái (0,0)
-            view.setPivotX(0f);
-            view.setPivotY(0f);
-
-            Runnable endAction = null;
-            if (i == childCount - 1) {
-                endAction = () -> resetViewState();
-            }
-
-            view.animate()
-                .scaleX(2.0f)
-                .scaleY(2.0f)
-                .setDuration(1000)
-                .withLayer()
-                .withEndAction(endAction)
-                .start();
+        int n = viewsContainer.getChildCount();
+        for (int i = 0; i < n; i++) {
+            View bar = viewsContainer.getChildAt(i);
+            long delay = i * 15;
+            animateBarProperty(bar, delay);
         }
     }
+    private void animateBarProperty(View bar, long delay) {
+        bar.animate()
+                .scaleY(3.0f)
+                .setDuration(340)
+                .setStartDelay(delay)
+                .withEndAction(() -> bar.animate()
+                        .scaleY(1.0f)
+                        .setDuration(340)
+                        .withEndAction(() -> animateBarProperty(bar, 0))
+                        .start())
+                .start();
+    }
 
+    // RESET
     private void resetViewState() {
-        if (badAnimator != null) {
-            badAnimator.cancel();
-        }
-
-        for (int i = 0; i < viewsContainer.getChildCount(); i++) {
-            View view = viewsContainer.getChildAt(i);
-            view.animate().cancel();
-            view.setScaleX(1.0f);
-            view.setScaleY(1.0f);
-
-            // Reset pivot về lại trung tâm (mặc định)
-            view.setPivotX(view.getWidth() / 2f);
-            view.setPivotY(view.getHeight() / 2f);
-
-            if (view.getWidth() != originalWidth && originalWidth > 0) {
-                ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-                layoutParams.width = originalWidth;
-                layoutParams.height = originalHeight;
-                view.setLayoutParams(layoutParams);
+        if (barRunnables != null) {
+            for (int i = 0; i < barRunnables.length; i++) {
+                View bar = viewsContainer.getChildAt(i);
+                if (barRunnables[i] != null) bar.removeCallbacks(barRunnables[i]);
             }
+        }
+        for (int i = 0; i < viewsContainer.getChildCount(); i++) {
+            View bar = viewsContainer.getChildAt(i);
+            bar.clearAnimation();
+            bar.animate().cancel();
+            bar.setScaleY(1f);
+            // đặt chiều cao lại min
+            ViewGroup.LayoutParams lp = bar.getLayoutParams();
+            lp.height = (int) (getResources().getDisplayMetrics().density * BAR_HEIGHT_MIN_DP);
+            bar.setLayoutParams(lp);
         }
     }
 }
