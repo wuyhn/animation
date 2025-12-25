@@ -1,3 +1,14 @@
 <resources>
-    <string name="app_name">Animation</string>
+    <string name="app_name">Animation Demo</string>
+
+    <!-- Titles -->
+    <string name="title_animation_comparison">So sánh Animation: Chưa tối ưu vs Tối ưu</string>
+
+    <!-- Button texts -->
+    <string name="btn_bad_animation">Chưa tối ưu\n(width)</string>
+    <string name="btn_good_animation">Tối ưu\n(scaleX)</string>
+    <string name="btn_stop">Dừng</string>
+
+    <!-- Content descriptions -->
+    <string name="bars_container">Container chứa các bars để demo animation</string>
 </resources>
