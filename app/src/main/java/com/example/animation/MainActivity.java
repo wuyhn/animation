@@ -117,57 +117,91 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+//private void animateBarOptimized(final View bar, long delay) {
+//    if (!isAnimationRunning) return;
+//
+//    bar.setPivotX(0f); // Giữ gốc tọa độ bên trái
+//
+//    // ta giữ layer này cố định trong suốt quá trình chạy để GPU xử lý texture mượt nhất.
+//    if (bar.getLayerType() != View.LAYER_TYPE_HARDWARE) {
+//        bar.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+//    }
+//
+//    bar.animate()
+//            .scaleX(SCALE_TARGET)
+//            .setDuration(1500)
+//            .setStartDelay(delay)
+//            .setInterpolator(new android.view.animation.LinearInterpolator())
+//            .withEndAction(() -> {
+//                if (isAnimationRunning) {
+//                    bar.animate()
+//                            .scaleX(1.0f)
+//                            .setDuration(1500)
+//                            .setInterpolator(new android.view.animation.LinearInterpolator())
+//                            // ✅ CHIẾN THUẬT 2: Loại bỏ StartDelay ở các vòng lặp sau
+//                            // Chỉ delay vòng đầu, các vòng sau chạy nối đuôi nhau để tránh sụt giảm frame
+//                            .withEndAction(() -> animateBarOptimized(bar, 0))
+//                            .start();
+//                }
+//            }).start();
+//}
 private void animateBarOptimized(final View bar, long delay) {
     if (!isAnimationRunning) return;
 
-    bar.setPivotX(0f); // Giữ gốc tọa độ bên trái
+    // 1. Sử dụng thuộc tính GPU hỗ trợ: scaleX để bỏ qua Layout Pass
+    bar.setPivotX(0f);
 
-    // ta giữ layer này cố định trong suốt quá trình chạy để GPU xử lý texture mượt nhất.
-    if (bar.getLayerType() != View.LAYER_TYPE_HARDWARE) {
-        bar.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-    }
+    // 2. Kích hoạt Hardware Layer: Snapshot lên GPU một lần duy nhất
+    // Việc này giúp GPU xử lý các biến đổi ma trận mà không cần vẽ lại View
+    bar.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
-    bar.animate()
-            .scaleX(SCALE_TARGET)
-            .setDuration(1500)
-            .setStartDelay(delay)
-            .setInterpolator(new android.view.animation.LinearInterpolator())
-            .withEndAction(() -> {
-                if (isAnimationRunning) {
-                    bar.animate()
-                            .scaleX(1.0f)
-                            .setDuration(1500)
-                            .setInterpolator(new android.view.animation.LinearInterpolator())
-                            // ✅ CHIẾN THUẬT 2: Loại bỏ StartDelay ở các vòng lặp sau
-                            // Chỉ delay vòng đầu, các vòng sau chạy nối đuôi nhau để tránh sụt giảm frame
-                            .withEndAction(() -> animateBarOptimized(bar, 0))
-                            .start();
-                }
-            }).start();
+    // 3. Sử dụng ObjectAnimator để tận dụng RenderThread hoàn toàn
+    // Chế độ INFINITE và REVERSE loại bỏ hoàn toàn việc gọi lại UI Thread mỗi chu kỳ
+    android.animation.ObjectAnimator animator = android.animation.ObjectAnimator.ofFloat(
+            bar, View.SCALE_X, 1.0f, SCALE_TARGET);
+
+    animator.setDuration(2000);
+    animator.setStartDelay(delay);
+    animator.setInterpolator(new android.view.animation.LinearInterpolator()); // Khung hình đều đặn
+
+    // Tối ưu quan trọng: Lặp lại tự động trên RenderThread (CPU không phải can thiệp)
+    animator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+    animator.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+
+    // Lưu animator vào Tag để nút STOP có thể truy cập và hủy trực tiếp (Đồng bộ vòng đời UI)
+    bar.setTag(animator);
+    animator.start();
 }
 
     private void stopAllAnimations() {
         isAnimationRunning = false;
-        // Xóa sạch hàng đợi Handler ngay lập tức để giải phóng UI Thread
+        // Xóa sạch mọi hàng đợi của Handler để giải phóng UI Thread
         mainHandler.removeCallbacksAndMessages(null);
 
         for (int i = 0; i < viewsContainer.getChildCount(); i++) {
             ViewGroup wrapper = (ViewGroup) viewsContainer.getChildAt(i);
             View bar = wrapper.getChildAt(0);
 
-            bar.animate().cancel(); // Hủy mọi animation đang chạy
+            // Dừng triệt để: Hủy ObjectAnimator từ Tag (Sửa lỗi không dừng được)
+            Object animTag = bar.getTag();
+            if (animTag instanceof android.animation.ObjectAnimator) {
+                ((android.animation.ObjectAnimator) animTag).cancel();
+            }
 
-            // Quan trọng: Tắt Hardware Layer để trả lại VRAM cho GPU
+            bar.animate().cancel(); // Hủy thêm các hiệu ứng cũ
+
+            // Giải phóng GPU: Tắt Hardware Layer để trả lại tài nguyên
             bar.setLayerType(View.LAYER_TYPE_NONE, null);
-
             bar.setScaleX(1f);
+            bar.setTag(null);
 
-            // Chỉ cập nhật LayoutParams nếu thực sự cần thiết để tránh ép CPU layout lại
+            // Đưa kích thước thật về mặc định mà không gây Measure Pass thừa
             ViewGroup.LayoutParams lp = bar.getLayoutParams();
             if (lp.width != BAR_MIN_WIDTH_PX) {
                 lp.width = BAR_MIN_WIDTH_PX;
                 bar.setLayoutParams(lp);
             }
         }
+
     }
 }
